@@ -5,3 +5,12 @@ def plan(query: str) -> list[dict]:
         {"subtask": "book nephrologist appointment", "tool": "appointment"},
         {"subtask": "summarize treatment options", "tool": "disease_search"},
     ]
+
+from pydantic import BaseModel
+
+class SubTask(BaseModel):
+    subtask: str
+    tool: str  # one of: "appointment", "ehr", "disease_search"
+
+class Plan(BaseModel):
+    subtasks: list[SubTask]
