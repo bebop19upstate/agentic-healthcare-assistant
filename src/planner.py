@@ -18,7 +18,7 @@ class Plan(BaseModel):
     subtasks: list[SubTask]
 
 
-_llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
+_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
 
 
 def _extract_text(content) -> str:

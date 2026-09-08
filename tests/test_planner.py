@@ -17,5 +17,11 @@ def test_plan_combined_scenario_includes_all_tools():
     )
     result = plan(query)
     tools_used = {st.tool for st in result.subtasks}
-    assert "appointment" in tools_used
-    assert "disease_search" in tools_used
+    assert tools_used == {"appointment", "ehr", "disease_search"}, (
+        f"Expected all 3 tools, got: {tools_used}"
+    )
+
+def test_plan_existing_patient_reference_includes_ehr_tool():
+    result = plan("My mother has diabetes, what new treatments exist?")
+    tools_used = {st.tool for st in result.subtasks}
+    assert "ehr" in tools_used
