@@ -1,0 +1,5 @@
+[
+  {"doctor_id": 1, "name": "Dr. Rao", "specialty": "nephrology", "available_slots": ["2026-09-10 10:00", "2026-09-10 14:00", "2026-09-12 09:00"]},
+  {"doctor_id": 2, "name": "Dr. Chen", "specialty": "cardiology", "available_slots": ["2026-09-11 09:00", "2026-09-11 15:00"]},
+  {"doctor_id": 3, "name": "Dr. Patel", "specialty": "dermatology", "available_slots": ["2026-09-13 11:00"]}
+]
