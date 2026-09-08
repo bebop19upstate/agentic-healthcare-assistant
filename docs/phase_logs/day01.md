@@ -26,3 +26,15 @@
 ## Status
 Phase 1 complete: src/planner.py, src/prompts/templates.py, tests/test_planner.py
 all working. Next: Phase 2 (appointment & EHR tools).
+
+## Update: model swap
+- gemini-3.6-flash's free tier daily quota is only 20 requests/day — far too
+  low for iterative testing. Switched to gemini-3.5-flash-lite: higher quota,
+  faster responses, same family.
+- Strengthened planner prompt with an explicit ehr rule + worked example after
+  noticing the model inconsistently dropped the ehr sub-task for scenarios
+  referencing an existing patient. Verified consistency with 5 manual runs
+  before trusting it in tests.
+- Tightened tests to assert the full expected tool set for the combined
+  scenario, and added a test with a different patient/condition to confirm
+  the model generalized the rule rather than pattern-matching the example.
