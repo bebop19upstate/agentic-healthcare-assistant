@@ -29,3 +29,20 @@ def add_patient_record(patient_id: int, name: str, age: int, history_text: str) 
     )
     conn.commit()
     conn.close()
+
+
+def get_patient_history(patient_id: int) -> dict | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT patient_id, name, age, history_text FROM patients WHERE patient_id = ?",
+        (patient_id,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return {
+        "patient_id": row[0],
+        "name": row[1],
+        "age": row[2],
+        "history_text": row[3],
+    }
