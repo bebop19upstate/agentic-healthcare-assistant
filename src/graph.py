@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, END
 from src.planner import plan
 from src.tools.ehr_tool import get_patient_history
 from src.tools.appointment_tool import find_slots, book_slot
+from src.tools.disease_search_tool import search_disease_info
 from src.memory.memory_manager import get_context
 
 
@@ -41,12 +42,27 @@ def appointment_node(state: AgentState) -> dict:
     return {"tool_results": {**state["tool_results"], "appointment": result}}
 
 
+def _get_subtask_query(state: AgentState, tool_name: str) -> str:
+    for subtask in state["plan"]:
+        if subtask["tool"] == tool_name:
+            return subtask["subtask"]
+    return state["query"]  # fallback if the planner didn't produce this tool
+
+
+def disease_search_node(state: AgentState) -> dict:
+    focused_query = _get_subtask_query(state, "disease_search")
+    result = search_disease_info(focused_query)
+    return {"tool_results": {**state["tool_results"], "disease_search": result}}
+
+
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
 graph.add_node("ehr", ehr_node)
 graph.add_node("appointment", appointment_node)
+graph.add_node("disease_search", disease_search_node)
 graph.set_entry_point("planner")
 graph.add_edge("planner", "ehr")
 graph.add_edge("ehr", "appointment")
-graph.add_edge("appointment", END)
+graph.add_edge("appointment", "disease_search")
+graph.add_edge("disease_search", END)
 app = graph.compile()
