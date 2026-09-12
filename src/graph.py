@@ -7,6 +7,20 @@ from src.tools.ehr_tool import get_patient_history
 from src.tools.appointment_tool import find_slots, book_slot
 from src.tools.disease_search_tool import search_disease_info
 from src.memory.memory_manager import get_context
+from src.prompts.templates import COMPOSER_PROMPT
+from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+load_dotenv()
+_composer_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
+
+
+def _extract_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(block.get("text", "") for block in content if isinstance(block, dict))
+    return str(content)
 
 
 class AgentState(TypedDict):
@@ -55,14 +69,26 @@ def disease_search_node(state: AgentState) -> dict:
     return {"tool_results": {**state["tool_results"], "disease_search": result}}
 
 
+def composer_node(state: AgentState) -> dict:
+    lines = []
+    for tool_name, result in state["tool_results"].items():
+        lines.append(f"{tool_name}: {result}")
+    results_text = "\n\n".join(lines)
+    prompt = COMPOSER_PROMPT.format(results=results_text)
+    response = _composer_llm.invoke(prompt)
+    return {"final_answer": _extract_text(response.content)}
+
+
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
 graph.add_node("ehr", ehr_node)
 graph.add_node("appointment", appointment_node)
 graph.add_node("disease_search", disease_search_node)
+graph.add_node("composer", composer_node)
 graph.set_entry_point("planner")
 graph.add_edge("planner", "ehr")
 graph.add_edge("ehr", "appointment")
 graph.add_edge("appointment", "disease_search")
-graph.add_edge("disease_search", END)
+graph.add_edge("disease_search", "composer")
+graph.add_edge("composer", END)
 app = graph.compile()
