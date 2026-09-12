@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END
 
 from src.planner import plan
 from src.tools.ehr_tool import get_patient_history
-from src.tools.appointment_tool import find_slots, book_slot
+from src.tools.appointment_tool import find_slots, book_slot, book_first_available
 from src.tools.disease_search_tool import search_disease_info
 from src.memory.memory_manager import get_context
 from src.prompts.templates import COMPOSER_PROMPT
@@ -41,8 +41,12 @@ def _get_subtask_query(state: AgentState, tool_name: str) -> str:
             return subtask["subtask"]
     return state["query"]  # fallback if the planner didn't produce this tool
 
+def _tool_in_plan(state: AgentState, tool_name: str) -> bool:
+    return any(subtask["tool"] == tool_name for subtask in state["plan"])
 
 def ehr_node(state: AgentState) -> dict:
+    if not _tool_in_plan(state, "ehr"):
+        return {}
     patient = get_patient_history(state["patient_id"])
     focused_query = _get_subtask_query(state, "ehr")
     memory_context = get_context(state["patient_id"], focused_query)
@@ -51,21 +55,19 @@ def ehr_node(state: AgentState) -> dict:
         summary = f"{summary} (Related context: {memory_context})"
     return {"tool_results": {**state["tool_results"], "ehr": summary}}
 
-
 def appointment_node(state: AgentState) -> dict:
-    slots = find_slots("nephrology")
-    if not slots:
-        result = "No nephrology slots available."
-    else:
-        chosen_slot = slots[0]
-        booked = book_slot(1, chosen_slot)
-        result = f"Booked nephrology appointment for {chosen_slot}." if booked else "Booking failed."
+    if not _tool_in_plan(state, "appointment"):
+        return {}
+    focused_query = _get_subtask_query(state, "appointment").lower()
+    specialty_roots = {"nephrolog": "nephrology", "cardiolog": "cardiology", "dermatolog": "dermatology"}
+    specialty = next((full for root, full in specialty_roots.items() if root in focused_query), "nephrology")    
+    result = book_first_available(specialty)
     return {"tool_results": {**state["tool_results"], "appointment": result}}
 
 
-
-
 def disease_search_node(state: AgentState) -> dict:
+    if not _tool_in_plan(state, "disease_search"):
+        return {}
     focused_query = _get_subtask_query(state, "disease_search")
     result = search_disease_info(focused_query)
     return {"tool_results": {**state["tool_results"], "disease_search": result}}

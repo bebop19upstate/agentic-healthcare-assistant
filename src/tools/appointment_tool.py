@@ -34,3 +34,13 @@ def book_slot(doctor_id: int, slot: str) -> bool:
             json.dump(doctors, f, indent=2)
 
     return booked
+
+
+def book_first_available(specialty: str) -> str:
+    doctors = _load_doctors()
+    for doctor in doctors:
+        if doctor["specialty"].lower() == specialty.lower() and doctor["available_slots"]:
+            slot = doctor["available_slots"][0]
+            if book_slot(doctor["doctor_id"], slot):
+                return f"Booked {specialty} appointment with {doctor['name']} for {slot}."
+    return f"No available {specialty} slots found."
