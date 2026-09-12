@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph, END
 
 from src.planner import plan
 from src.tools.ehr_tool import get_patient_history
+from src.tools.appointment_tool import find_slots, book_slot
 from src.memory.memory_manager import get_context
 
 
@@ -29,10 +30,23 @@ def ehr_node(state: AgentState) -> dict:
     return {"tool_results": {**state["tool_results"], "ehr": summary}}
 
 
+def appointment_node(state: AgentState) -> dict:
+    slots = find_slots("nephrology")
+    if not slots:
+        result = "No nephrology slots available."
+    else:
+        chosen_slot = slots[0]
+        booked = book_slot(1, chosen_slot)
+        result = f"Booked nephrology appointment for {chosen_slot}." if booked else "Booking failed."
+    return {"tool_results": {**state["tool_results"], "appointment": result}}
+
+
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
 graph.add_node("ehr", ehr_node)
+graph.add_node("appointment", appointment_node)
 graph.set_entry_point("planner")
 graph.add_edge("planner", "ehr")
-graph.add_edge("ehr", END)
+graph.add_edge("ehr", "appointment")
+graph.add_edge("appointment", END)
 app = graph.compile()
