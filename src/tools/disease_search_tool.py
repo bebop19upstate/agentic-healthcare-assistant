@@ -33,19 +33,11 @@ def retrieve_chunks(query: str, k: int = 3) -> list[str]:
 import os as _os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from src.prompts.templates import DISEASE_ANSWER_PROMPT
 
 load_dotenv()
 
 _llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
-
-DISEASE_ANSWER_PROMPT = """Answer the question using ONLY the excerpts below. Do not use any outside knowledge, even if you know more about the topic. If the excerpts don't contain enough information to answer, say so explicitly rather than guessing.
-
-Excerpts:
-{excerpts}
-
-Question: {question}
-
-Answer:"""
 
 
 def _extract_text(content) -> str:

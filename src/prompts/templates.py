@@ -18,3 +18,13 @@ Return ONLY the JSON object. No explanation. No markdown code fences. No other t
 
 Patient message: "{query}"
 """
+
+
+DISEASE_ANSWER_PROMPT = """Answer the question using ONLY the excerpts below. Do not use any outside knowledge, even if you know more about the topic. If the excerpts don't contain enough information to answer, say so explicitly rather than guessing.
+
+Excerpts:
+{excerpts}
+
+Question: {question}
+
+Answer:"""
