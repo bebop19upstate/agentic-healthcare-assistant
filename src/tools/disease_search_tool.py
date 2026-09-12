@@ -61,3 +61,10 @@ def answer_from_chunks(question: str, chunks: list[str]) -> str:
     prompt = DISEASE_ANSWER_PROMPT.format(excerpts=excerpts, question=question)
     response = _llm.invoke(prompt)
     return _extract_text(response.content)
+
+
+def search_disease_info(query: str, k: int = 2) -> str:
+    chunks = retrieve_chunks(query, k=k)
+    if not chunks:
+        return "No relevant information found in the medical reference corpus."
+    return answer_from_chunks(query, chunks)
