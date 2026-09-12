@@ -28,3 +28,12 @@ Excerpts:
 Question: {question}
 
 Answer:"""
+
+
+EHR_SUMMARY_PROMPT = """Summarize the following patient medical history in 1-2 sentences, using only information present in the record. Do not add, infer, or guess any medical details not explicitly stated.
+
+Patient name: {name}
+Age: {age}
+Medical history: {history_text}
+
+Summary:"""
