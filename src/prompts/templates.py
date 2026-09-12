@@ -37,3 +37,10 @@ Age: {age}
 Medical history: {history_text}
 
 Summary:"""
+
+
+COMPOSER_PROMPT = """You are a healthcare assistant replying to a patient or their family member. Combine the following results into one clear, natural, and warm response. Only mention information that is actually present below — if a section is missing, don't reference it or apologize for its absence, just don't bring it up.
+
+{results}
+
+Write the final response now:"""
