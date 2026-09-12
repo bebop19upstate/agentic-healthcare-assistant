@@ -1,5 +1,11 @@
 from typing import TypedDict
 
+from langgraph.graph import StateGraph, END
+
+from src.planner import plan
+from src.tools.ehr_tool import get_patient_history
+from src.memory.memory_manager import get_context
+
 
 class AgentState(TypedDict):
     query: str
@@ -9,17 +15,24 @@ class AgentState(TypedDict):
     final_answer: str
 
 
-from langgraph.graph import StateGraph, END
-from src.planner import plan
-
-
 def planner_node(state: AgentState) -> dict:
     result = plan(state["query"])
     return {"plan": [st.model_dump() for st in result.subtasks]}
 
 
+def ehr_node(state: AgentState) -> dict:
+    patient = get_patient_history(state["patient_id"])
+    memory_context = get_context(state["patient_id"], state["query"])
+    summary = patient["history_text"] if patient else "No record found."
+    if memory_context:
+        summary = f"{summary} (Related context: {memory_context})"
+    return {"tool_results": {**state["tool_results"], "ehr": summary}}
+
+
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
+graph.add_node("ehr", ehr_node)
 graph.set_entry_point("planner")
-graph.add_edge("planner", END)
+graph.add_edge("planner", "ehr")
+graph.add_edge("ehr", END)
 app = graph.compile()
