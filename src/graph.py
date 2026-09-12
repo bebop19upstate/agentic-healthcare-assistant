@@ -35,10 +35,17 @@ def planner_node(state: AgentState) -> dict:
     result = plan(state["query"])
     return {"plan": [st.model_dump() for st in result.subtasks]}
 
+def _get_subtask_query(state: AgentState, tool_name: str) -> str:
+    for subtask in state["plan"]:
+        if subtask["tool"] == tool_name:
+            return subtask["subtask"]
+    return state["query"]  # fallback if the planner didn't produce this tool
+
 
 def ehr_node(state: AgentState) -> dict:
     patient = get_patient_history(state["patient_id"])
-    memory_context = get_context(state["patient_id"], state["query"])
+    focused_query = _get_subtask_query(state, "ehr")
+    memory_context = get_context(state["patient_id"], focused_query)
     summary = patient["history_text"] if patient else "No record found."
     if memory_context:
         summary = f"{summary} (Related context: {memory_context})"
@@ -56,11 +63,6 @@ def appointment_node(state: AgentState) -> dict:
     return {"tool_results": {**state["tool_results"], "appointment": result}}
 
 
-def _get_subtask_query(state: AgentState, tool_name: str) -> str:
-    for subtask in state["plan"]:
-        if subtask["tool"] == tool_name:
-            return subtask["subtask"]
-    return state["query"]  # fallback if the planner didn't produce this tool
 
 
 def disease_search_node(state: AgentState) -> dict:
