@@ -23,3 +23,8 @@ def _load_corpus() -> None:
             for chunk in chunk_text(text):
                 _disease_store.add_summary(patient_id=0, text=chunk)  # patient_id unused here, 0 as a placeholder
     _loaded = True
+
+
+def retrieve_chunks(query: str, k: int = 3) -> list[str]:
+    _load_corpus()
+    return _disease_store.retrieve_similar(query, k=k)
