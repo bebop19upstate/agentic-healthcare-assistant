@@ -28,3 +28,36 @@ def _load_corpus() -> None:
 def retrieve_chunks(query: str, k: int = 3) -> list[str]:
     _load_corpus()
     return _disease_store.retrieve_similar(query, k=k)
+
+
+import os as _os
+from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+load_dotenv()
+
+_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
+
+DISEASE_ANSWER_PROMPT = """Answer the question using ONLY the excerpts below. Do not use any outside knowledge, even if you know more about the topic. If the excerpts don't contain enough information to answer, say so explicitly rather than guessing.
+
+Excerpts:
+{excerpts}
+
+Question: {question}
+
+Answer:"""
+
+
+def _extract_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(block.get("text", "") for block in content if isinstance(block, dict))
+    return str(content)
+
+
+def answer_from_chunks(question: str, chunks: list[str]) -> str:
+    excerpts = "\n\n".join(f"- {c}" for c in chunks)
+    prompt = DISEASE_ANSWER_PROMPT.format(excerpts=excerpts, question=question)
+    response = _llm.invoke(prompt)
+    return _extract_text(response.content)
