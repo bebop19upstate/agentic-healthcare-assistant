@@ -43,3 +43,26 @@ book a nephrologist for him. Also, can you summarize latest treatment methods?"
   disease_search_node, composer_node)
 - Routing logic so only the subtasks the planner identified actually run
   (e.g. a booking-only query should never call disease_search_node)
+
+## Phase 7 test scenarios
+
+1. **Booking-only** — "Book me a cardiologist appointment next week."
+   Expect: only appointment tool runs; final answer discusses only the booking.
+
+2. **EHR-update-only** — "Add a note to my father's record: started a new
+   blood pressure medication."
+   Expect: only EHR tool runs; record is actually updated in the database;
+   final answer confirms the update.
+
+3. **Disease-info-only** — "What's the latest on kidney disease treatment?"
+   Expect: only disease_search runs; grounded answer; no unrelated content.
+
+4. **Unknown patient** — query references a patient_id not in the database.
+   DECISION: the system stops entirely and reports the patient couldn't be
+   found — it does NOT attempt booking or disease-search even if those parts
+   of the query would otherwise be valid, since a request about an
+   unidentifiable patient shouldn't partially proceed.
+
+5. **Ambiguous query** — "I need help," no clear tool mapping.
+   DECISION: the composer must explicitly ask "Could you tell me more about
+   what you need?" rather than a generic non-answer or a fabricated response.
