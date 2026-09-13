@@ -46,6 +46,15 @@ def planner_node(state: AgentState) -> dict:
     result = plan(state["query"])
     return {"plan": [st.model_dump() for st in result.subtasks]}
 
+def clarification_check_node(state: AgentState) -> dict:
+    if len(state["plan"]) == 0:
+        return {"final_answer": "Could you tell me more about what you need?"}
+    return {}
+
+
+def _has_plan(state: AgentState) -> str:
+    return "continue" if len(state["plan"]) > 0 else "stop"
+
 def _get_subtask_query(state: AgentState, tool_name: str) -> str:
     for subtask in state["plan"]:
         if subtask["tool"] == tool_name:
@@ -124,16 +133,19 @@ def _patient_found(state: AgentState) -> str:
 
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
+graph.add_node("clarification_check", clarification_check_node)
 graph.add_node("patient_check", patient_check_node)
 graph.add_node("ehr", ehr_node)
 graph.add_node("appointment", appointment_node)
 graph.add_node("disease_search", disease_search_node)
 graph.add_node("composer", composer_node)
 graph.set_entry_point("planner")
-graph.add_edge("planner", "patient_check")
+graph.add_edge("planner", "clarification_check")
+graph.add_conditional_edges("clarification_check", _has_plan, {"continue": "patient_check", "stop": END})
 graph.add_conditional_edges("patient_check", _patient_found, {"continue": "ehr", "stop": END})
 graph.add_edge("ehr", "appointment")
 graph.add_edge("appointment", "disease_search")
 graph.add_edge("disease_search", "composer")
 graph.add_edge("composer", END)
 app = graph.compile()
+ 

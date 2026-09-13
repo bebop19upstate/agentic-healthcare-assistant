@@ -9,6 +9,7 @@ Rules:
 - If the message asks to book, schedule, or check availability with any kind of doctor, include an "appointment" sub-task.
 - If the message asks about treatments, symptoms, or general medical information, include a "disease_search" sub-task.
 - Include every sub-task that applies — a message can and often does need more than one tool.
+- If the message is too vague or general to identify any specific sub-task (e.g. "I need help" with no further detail), return an empty subtasks array: {{"subtasks": []}}. Do not invent a sub-task just to fill the response.
 
 Example:
 Patient message: "My mother has diabetes. Can you check what new medications are available?"
