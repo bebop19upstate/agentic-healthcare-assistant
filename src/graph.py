@@ -10,6 +10,7 @@ from src.memory.memory_manager import get_context
 from src.prompts.templates import COMPOSER_PROMPT
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from src.logging_utils import timed_tool_call
 
 load_dotenv()
 _composer_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
@@ -70,21 +71,22 @@ def _tool_in_plan(state: AgentState, tool_name: str) -> bool:
 def ehr_node(state: AgentState) -> dict:
     if not _tool_in_plan(state, "ehr"):
         return {}
-    subtask_texts = _get_all_subtask_texts(state, "ehr")
-    write_keywords = ["add a note", "add note", "update", "note:"]
-    write_texts = [t for t in subtask_texts if any(kw in t.lower() for kw in write_keywords)]
+    with timed_tool_call("ehr"):
+        subtask_texts = _get_all_subtask_texts(state, "ehr")
+        write_keywords = ["add a note", "add note", "update", "note:"]
+        write_texts = [t for t in subtask_texts if any(kw in t.lower() for kw in write_keywords)]
 
-    for note_text in write_texts:
-        clean_note = _extract_clinical_note(note_text)
-        append_patient_note(state["patient_id"], clean_note)
+        for note_text in write_texts:
+            clean_note = _extract_clinical_note(note_text)
+            append_patient_note(state["patient_id"], clean_note)
 
-    patient = get_patient_history(state["patient_id"])  # re-fetch AFTER any writes above
-    memory_context = get_context(state["patient_id"], subtask_texts[0] if subtask_texts else state["query"])
-    summary = patient["history_text"] if patient else "No record found."
-    if write_texts:
-        summary = f"Record updated. Current history: {summary}"
-    if memory_context:
-        summary = f"{summary} (Related context: {memory_context})"
+        patient = get_patient_history(state["patient_id"])
+        memory_context = get_context(state["patient_id"], subtask_texts[0] if subtask_texts else state["query"])
+        summary = patient["history_text"] if patient else "No record found."
+        if write_texts:
+            summary = f"Record updated. Current history: {summary}"
+        if memory_context:
+            summary = f"{summary} (Related context: {memory_context})"
     return {"tool_results": {**state["tool_results"], "ehr": summary}}
 
 
@@ -92,18 +94,20 @@ def ehr_node(state: AgentState) -> dict:
 def appointment_node(state: AgentState) -> dict:
     if not _tool_in_plan(state, "appointment"):
         return {}
-    focused_query = _get_subtask_query(state, "appointment").lower()
-    specialty_roots = {"nephrolog": "nephrology", "cardiolog": "cardiology", "dermatolog": "dermatology"}
-    specialty = next((full for root, full in specialty_roots.items() if root in focused_query), "nephrology")    
-    result = book_first_available(specialty)
+    with timed_tool_call("appointment"):
+        focused_query = _get_subtask_query(state, "appointment").lower()
+        specialty_roots = {"nephrolog": "nephrology", "cardiolog": "cardiology", "dermatolog": "dermatology"}
+        specialty = next((full for root, full in specialty_roots.items() if root in focused_query), "nephrology")
+        result = book_first_available(specialty)
     return {"tool_results": {**state["tool_results"], "appointment": result}}
 
 
 def disease_search_node(state: AgentState) -> dict:
     if not _tool_in_plan(state, "disease_search"):
         return {}
-    focused_query = _get_subtask_query(state, "disease_search")
-    result = search_disease_info(focused_query)
+    with timed_tool_call("disease_search"):
+        focused_query = _get_subtask_query(state, "disease_search")
+        result = search_disease_info(focused_query)
     return {"tool_results": {**state["tool_results"], "disease_search": result}}
 
 
