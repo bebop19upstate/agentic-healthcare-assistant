@@ -10,6 +10,8 @@ Rules:
 - If the message asks about treatments, symptoms, or general medical information, include a "disease_search" sub-task.
 - Include every sub-task that applies — a message can and often does need more than one tool.
 - If the message is too vague or general to identify any specific sub-task (e.g. "I need help" with no further detail), return an empty subtasks array: {{"subtasks": []}}. Do not invent a sub-task just to fill the response.
+- If the message asks to add, record, log, note, or update information about a patient (not just retrieve it), the ehr sub-task description must clearly reflect that this is an update — start it with wording like "Add a note..." or "Update the record..." rather than "Retrieve...".
+
 
 Example:
 Patient message: "My mother has diabetes. Can you check what new medications are available?"
@@ -18,7 +20,12 @@ Output: {{"subtasks": [{{"subtask": "Retrieve mother's medical history and diabe
 Return ONLY the JSON object. No explanation. No markdown code fences. No other text before or after.
 
 Patient message: "{query}"
+
+Example:
+Patient message: "Please log that my son had a fever of 101°F last night."
+Output: {{"subtasks": [{{"subtask": "Add a note to the son's record: fever of 101°F last night", "tool": "ehr"}}]}}
 """
+
 
 
 DISEASE_ANSWER_PROMPT = """Answer the question using ONLY the excerpts below. Do not use any outside knowledge, even if you know more about the topic. If the excerpts don't contain enough information to answer, say so explicitly rather than guessing.
