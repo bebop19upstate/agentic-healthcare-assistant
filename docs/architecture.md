@@ -130,3 +130,22 @@ book a nephrologist for him. Also, can you summarize latest treatment methods?"
 - **Operational logging via a CSV file** rather than a database was chosen
   for simplicity — sufficient for this project's scale and easy to inspect
   directly, but wouldn't scale to concurrent multi-user access.
+
+## Known limitations
+
+- **Gemini free-tier rate limits**: `gemini-3.5-flash-lite` is capped at 15
+  requests/minute on the free tier. Running the full test suite (`pytest -q`,
+  no path) back-to-back can occasionally trip this limit, since 25+ tests
+  making multiple LLM calls each can burst past 15/minute. If you see a
+  `GoogleRateLimitError`, wait ~60 seconds and rerun the failed test file —
+  it is a timing issue, not a correctness bug. Running individual test files
+  during active development (rather than the full suite) avoids this in
+  practice.
+- **Mocked external systems**: doctor scheduling and disease-information
+  retrieval use static local files (`data/mock_doctors.json`,
+  `data/disease_corpus/`) rather than live APIs — see "What's mocked vs.
+  real" above.
+- **Specialty and read/write detection use simple text matching** (word
+  roots, keyword lists) rather than structured classification — see "Key
+  design decisions and trade-offs" above for why, and what a more robust
+  version would look like.
