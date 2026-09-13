@@ -23,13 +23,24 @@ tab_chat, tab_doctor, tab_info, tab_metrics, tab_memory = st.tabs(
     ["Chat", "Doctor view", "Medical info", "Metrics", "Memory & logs"]
 )
 
+SCENARIOS = {
+    "-- Type my own --": ("", 1),
+    "Booking only": ("Book me a cardiologist appointment next week", 1),
+    "EHR update only": ("Add a note to my father record: started a new blood pressure medication", 1),
+    "Disease info only": ("What's the latest on kidney disease treatment?", 1),
+    "Unknown patient (patient_id 999)": ("Book me a nephrologist", 999),
+    "Ambiguous query": ("I need help", 1),
+}
+
 with tab_chat:
-    query = st.text_input("Ask something")
+    scenario_choice = st.selectbox("Or replay a Phase 7 test scenario:", list(SCENARIOS.keys()))
+    default_text, scenario_patient_id = SCENARIOS[scenario_choice]
+    query = st.text_input("Ask something", value=default_text)
     if st.button("Submit") and query:
         with st.spinner("Thinking..."):
             result = app.invoke({
                 "query": query,
-                "patient_id": 1,
+                "patient_id": scenario_patient_id,
                 "plan": [],
                 "tool_results": {},
                 "final_answer": "",
