@@ -14,6 +14,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "last_disease_result" not in st.session_state:
     st.session_state.last_disease_result = None
+if "last_plan" not in st.session_state:
+    st.session_state.last_plan = []
 
 tab_chat, tab_doctor, tab_info, tab_metrics = st.tabs(
     ["Chat", "Doctor view", "Medical info", "Metrics"]
@@ -31,6 +33,7 @@ with tab_chat:
                 "final_answer": "",
             })
         st.session_state.history.append((query, result["final_answer"]))
+        st.session_state.last_plan = result["plan"]
         if "disease_search" in result["tool_results"]:
             st.session_state.last_disease_result = result["tool_results"]["disease_search"]
 
