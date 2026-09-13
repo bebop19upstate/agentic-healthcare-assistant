@@ -3,7 +3,7 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 
 from src.planner import plan
-from src.tools.ehr_tool import get_patient_history
+from src.tools.ehr_tool import get_patient_history, append_patient_note
 from src.tools.appointment_tool import find_slots, book_slot, book_first_available
 from src.tools.disease_search_tool import search_disease_info
 from src.memory.memory_manager import get_context
@@ -22,6 +22,17 @@ def _extract_text(content) -> str:
         return "".join(block.get("text", "") for block in content if isinstance(block, dict))
     return str(content)
 
+NOTE_EXTRACTION_PROMPT = """Extract just the clinical note content the user wants recorded, as a short factual statement. Do not include instructions like "add a note" or "update the record" — only the actual medical content.
+
+Request: {request}
+
+Clinical note:"""
+
+
+def _extract_clinical_note(request_text: str) -> str:
+    prompt = NOTE_EXTRACTION_PROMPT.format(request=request_text)
+    response = _composer_llm.invoke(prompt)
+    return _extract_text(response.content).strip()
 
 class AgentState(TypedDict):
     query: str
@@ -41,19 +52,33 @@ def _get_subtask_query(state: AgentState, tool_name: str) -> str:
             return subtask["subtask"]
     return state["query"]  # fallback if the planner didn't produce this tool
 
+def _get_all_subtask_texts(state: AgentState, tool_name: str) -> list[str]:
+    return [subtask["subtask"] for subtask in state["plan"] if subtask["tool"] == tool_name]
+
 def _tool_in_plan(state: AgentState, tool_name: str) -> bool:
     return any(subtask["tool"] == tool_name for subtask in state["plan"])
 
 def ehr_node(state: AgentState) -> dict:
     if not _tool_in_plan(state, "ehr"):
         return {}
-    patient = get_patient_history(state["patient_id"])
-    focused_query = _get_subtask_query(state, "ehr")
-    memory_context = get_context(state["patient_id"], focused_query)
+    subtask_texts = _get_all_subtask_texts(state, "ehr")
+    write_keywords = ["add a note", "add note", "update", "note:"]
+    write_texts = [t for t in subtask_texts if any(kw in t.lower() for kw in write_keywords)]
+
+    for note_text in write_texts:
+        clean_note = _extract_clinical_note(note_text)
+        append_patient_note(state["patient_id"], clean_note)
+
+    patient = get_patient_history(state["patient_id"])  # re-fetch AFTER any writes above
+    memory_context = get_context(state["patient_id"], subtask_texts[0] if subtask_texts else state["query"])
     summary = patient["history_text"] if patient else "No record found."
+    if write_texts:
+        summary = f"Record updated. Current history: {summary}"
     if memory_context:
         summary = f"{summary} (Related context: {memory_context})"
     return {"tool_results": {**state["tool_results"], "ehr": summary}}
+
+
 
 def appointment_node(state: AgentState) -> dict:
     if not _tool_in_plan(state, "appointment"):

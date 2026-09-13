@@ -46,3 +46,12 @@ def get_patient_history(patient_id: int) -> dict | None:
         "age": row[2],
         "history_text": row[3],
     }
+
+def append_patient_note(patient_id: int, note: str) -> bool:
+    patient = get_patient_history(patient_id)
+    if not patient:
+        return False
+    updated_history = f"{patient['history_text']} | Note: {note}"
+    add_patient_record(patient_id, patient["name"], patient["age"], updated_history)
+
+    return True
