@@ -19,8 +19,8 @@ if "last_plan" not in st.session_state:
 if "last_retrieved_memory" not in st.session_state:
     st.session_state.last_retrieved_memory = ""
 
-tab_chat, tab_doctor, tab_info, tab_metrics = st.tabs(
-    ["Chat", "Doctor view", "Medical info", "Metrics"]
+tab_chat, tab_doctor, tab_info, tab_metrics, tab_memory = st.tabs(
+    ["Chat", "Doctor view", "Medical info", "Metrics", "Memory & logs"]
 )
 
 with tab_chat:
@@ -63,6 +63,27 @@ with tab_info:
         st.write(st.session_state.last_disease_result)
     else:
         st.write("No medical information has been retrieved yet this session. Ask a disease-related question in the Chat tab.")
+
+with tab_memory:
+    st.subheader("Planner's Last Decomposition")
+    if st.session_state.last_plan:
+        for i, subtask in enumerate(st.session_state.last_plan, start=1):
+            st.write(f"{i}. **{subtask['subtask']}** → tool: `{subtask['tool']}`")
+    else:
+        st.write("No query has been run yet this session.")
+
+    st.subheader("Memory Retrieved for Last Query")
+    if st.session_state.last_retrieved_memory:
+        st.write(st.session_state.last_retrieved_memory)
+    else:
+        st.write("No memory context was retrieved for the last query.")
+
+    st.subheader("Full Tool Call Log")
+    logs = _load_tool_logs()
+    if logs:
+        st.dataframe(logs)
+    else:
+        st.write("No tool calls logged yet.")
 
 with tab_metrics:
     st.subheader("Tool Performance Metrics")
