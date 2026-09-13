@@ -2,9 +2,37 @@
 
 ## Component overview
 
-See the diagram and phased plan for the full component table. This document
-captures the request lifecycle traced during Phase 5, before LangGraph wiring
-began in Phase 6.
+| Component | File | Responsibility |
+|---|---|---|
+| Planner | `src/planner.py` | Decomposes a raw query into sub-tasks, each tagged with the tool that handles it |
+| Appointment tool | `src/tools/appointment_tool.py` | Finds and books doctor slots, matched by specialty |
+| EHR tool | `src/tools/ehr_tool.py` | Reads and writes patient records (SQLite) |
+| Disease search tool | `src/tools/disease_search_tool.py` | RAG pipeline: chunking, retrieval, grounded answer generation |
+| Memory | `src/memory/vector_store.py`, `src/memory/memory_manager.py` | FAISS-backed, per-patient isolated long-term memory |
+| Orchestrator | `src/graph.py` | LangGraph StateGraph wiring every node together with conditional routing |
+| Evaluation | `src/evaluation/evaluator.py`, `src/evaluation/summary_report.py` | LLM-as-judge grading + operational tool-call logging |
+| UI | `app/streamlit_app.py` | 5-tab dashboard: Chat, Doctor view, Medical info, Metrics, Memory & logs |
+
+## Graph structure (as of Phase 7)
+
+```mermaid
+flowchart TD
+    A[planner] --> B{clarification_check}
+    B -->|plan is empty| END1[END: ask for clarification]
+    B -->|plan exists| C{patient_check}
+    C -->|patient not found| END2[END: report not found]
+    C -->|patient found| D[ehr]
+    D --> E[appointment]
+    E --> F[disease_search]
+    F --> G[composer]
+    G --> END3[END: final answer]
+```
+
+Each of `ehr`, `appointment`, and `disease_search` internally checks
+`_tool_in_plan()` first and skips all work (including any LLM call) if the
+planner didn't request that tool for the current query — so the straight-line
+edges above don't mean every node does something on every request, only that
+every node gets a turn to check whether it should.
 
 ## Request lifecycle: the sample scenario
 
@@ -66,3 +94,39 @@ book a nephrologist for him. Also, can you summarize latest treatment methods?"
 5. **Ambiguous query** — "I need help," no clear tool mapping.
    DECISION: the composer must explicitly ask "Could you tell me more about
    what you need?" rather than a generic non-answer or a fabricated response.
+
+## What's mocked vs. real
+
+| Piece | Status | Notes |
+|---|---|---|
+| LLM | Real | Google Gemini (`gemini-3.5-flash-lite`) via live API calls |
+| Embeddings | Real | `sentence-transformers` (`all-MiniLM-L6-v2`), runs locally |
+| Vector search | Real | FAISS, genuine similarity search |
+| Doctor schedule | Mocked | `data/mock_doctors.json`, a static file standing in for a real scheduling API |
+| Patient records | Semi-real | Genuine SQLite database (`data/patients.db`) with real read/write logic, but seeded with 3 fake patients rather than connected to a live EHR system |
+| Disease information | Mocked | 5 offline reference documents (`data/disease_corpus/`) standing in for live Medline/WHO API calls |
+| Evaluation grading | Real | Live LLM-as-judge calls, not simulated |
+
+## Key design decisions and trade-offs
+
+- **Per-patient memory isolation** (separate `VectorStore` per patient_id)
+  was chosen over a single shared index with metadata filtering, for
+  simplicity at this project's scale — trades some efficiency for
+  structurally impossible cross-patient data leakage.
+- **Specialty matching by word root** (`"cardiolog"` matching both
+  "cardiology" and "cardiologist") was chosen over an exact keyword list,
+  after discovering natural phrasing variation broke exact matching in
+  Phase 7. A production system would likely use a proper medical taxonomy
+  or NER model instead.
+- **EHR write detection via keyword matching** on the planner's sub-task
+  text, backed by an explicit planner-prompt rule instructing it to phrase
+  write requests distinctly from read requests. This is a simplification —
+  a more robust design would have the planner emit a structured `action:
+  read | write` field directly, rather than inferring intent from free text.
+- **Hardcoded clarification message** for ambiguous queries (rather than an
+  LLM-generated one) ensures the exact wording is always predictable and
+  testable, at the cost of being less adaptive to different kinds of
+  ambiguity.
+- **Operational logging via a CSV file** rather than a database was chosen
+  for simplicity — sufficient for this project's scale and easy to inspect
+  directly, but wouldn't scale to concurrent multi-user access.
