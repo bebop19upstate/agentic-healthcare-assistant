@@ -1,0 +1,32 @@
+[
+  {
+    "id": "booking_only",
+    "query": "Book me a cardiologist appointment next week",
+    "patient_id": 1,
+    "expected_criteria": "Confirms a cardiology appointment was booked with a specific doctor and time. Does not mention medical history or treatment information, since none was requested."
+  },
+  {
+    "id": "ehr_write",
+    "query": "Add a note to my father record: started a new blood pressure medication",
+    "patient_id": 1,
+    "expected_criteria": "Confirms the patient's record was updated with a note about starting a new blood pressure medication."
+  },
+  {
+    "id": "disease_info_only",
+    "query": "What's the latest on kidney disease treatment?",
+    "patient_id": 1,
+    "expected_criteria": "Mentions specific CKD treatment approaches grounded in the reference corpus, such as ACE inhibitors, ARBs, SGLT2 inhibitors, or dialysis for later stages. Does not mention booking or appointments, since none was requested."
+  },
+  {
+    "id": "unknown_patient",
+    "query": "Book me a nephrologist",
+    "patient_id": 999,
+    "expected_criteria": "States clearly that no record could be found for the given patient ID, and does not attempt to book an appointment or provide any medical information."
+  },
+  {
+    "id": "ambiguous_query",
+    "query": "I need help",
+    "patient_id": 1,
+    "expected_criteria": "Asks the user for clarification about what they need, rather than guessing or fabricating an answer."
+  }
+]
