@@ -29,6 +29,7 @@ def make_initial_state(query: str, patient_id: int = 1) -> AgentState:
         "plan": [],
         "tool_results": {},
         "final_answer": "",
+        "retrieved_memory": "",
     }
 
 

@@ -41,6 +41,7 @@ class AgentState(TypedDict):
     plan: list[dict]
     tool_results: dict
     final_answer: str
+    retrieved_memory: str
 
 
 def planner_node(state: AgentState) -> dict:
@@ -87,7 +88,7 @@ def ehr_node(state: AgentState) -> dict:
             summary = f"Record updated. Current history: {summary}"
         if memory_context:
             summary = f"{summary} (Related context: {memory_context})"
-    return {"tool_results": {**state["tool_results"], "ehr": summary}}
+    return {"tool_results": {**state["tool_results"], "ehr": summary}, "retrieved_memory": memory_context}
 
 
 
