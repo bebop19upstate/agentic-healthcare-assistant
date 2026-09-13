@@ -107,15 +107,31 @@ def composer_node(state: AgentState) -> dict:
     response = _composer_llm.invoke(prompt)
     return {"final_answer": _extract_text(response.content)}
 
+def patient_check_node(state: AgentState) -> dict:
+    if state["patient_id"] is None:
+        return {}
+    patient = get_patient_history(state["patient_id"])
+    if patient is None:
+        return {"final_answer": f"I couldn't find a record for patient ID {state['patient_id']}. Please double-check the patient information before I can help further."}
+    return {}
+
+def _patient_found(state: AgentState) -> str:
+    if state["patient_id"] is None:
+        return "continue"
+    patient = get_patient_history(state["patient_id"])
+    return "continue" if patient else "stop"
+
 
 graph = StateGraph(AgentState)
 graph.add_node("planner", planner_node)
+graph.add_node("patient_check", patient_check_node)
 graph.add_node("ehr", ehr_node)
 graph.add_node("appointment", appointment_node)
 graph.add_node("disease_search", disease_search_node)
 graph.add_node("composer", composer_node)
 graph.set_entry_point("planner")
-graph.add_edge("planner", "ehr")
+graph.add_edge("planner", "patient_check")
+graph.add_conditional_edges("patient_check", _patient_found, {"continue": "ehr", "stop": END})
 graph.add_edge("ehr", "appointment")
 graph.add_edge("appointment", "disease_search")
 graph.add_edge("disease_search", "composer")
